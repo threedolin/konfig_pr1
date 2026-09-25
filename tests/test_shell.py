@@ -3,7 +3,11 @@
 Запуск из корня репозитория: PYTHONPATH=src python3 -m unittest discover tests
 """
 
+import io
+import os
+import tempfile
 import unittest
+from contextlib import redirect_stdout
 
 from shell import Emulator, ParseError, parse_line
 
@@ -62,6 +66,57 @@ class TestEmulator(unittest.TestCase):
         """exit останавливает цикл."""
         self.emu.execute("exit")
         self.assertFalse(self.emu.running)
+
+
+class TestScript(unittest.TestCase):
+    """Тесты стартового скрипта."""
+
+    def run_script(self, text):
+        """Записывает скрипт во временный файл, запускает, возвращает вывод."""
+        with tempfile.NamedTemporaryFile("w", suffix=".txt",
+                                         delete=False) as f:
+            f.write(text)
+        self.addCleanup(os.remove, f.name)
+        emu = Emulator(script_path=f.name)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            emu.run_script(f.name)
+        return emu, out.getvalue()
+
+    def test_input_and_output(self):
+        """На экран выводится и команда, и результат."""
+        emu, out = self.run_script("# комментарий\nls a\n")
+        self.assertIn(emu.get_prompt() + "ls a", out)
+        self.assertIn("ls, аргументы: ['a']", out)
+        self.assertNotIn("комментарий", out)
+
+    def test_skip_errors(self):
+        """Строка с ошибкой пропускается, дальше выполнение идет."""
+        _, out = self.run_script("abc\nls after\n")
+        self.assertIn("строка 1 с ошибкой пропущена", out)
+        self.assertIn("['after']", out)
+
+    def test_exit_in_script(self):
+        """exit в скрипте останавливает выполнение."""
+        emu, out = self.run_script("exit\nls never\n")
+        self.assertFalse(emu.running)
+        self.assertNotIn("never", out)
+
+    def test_missing_file(self):
+        """Несуществующий скрипт - сообщение об ошибке."""
+        out = io.StringIO()
+        with redirect_stdout(out):
+            Emulator().run_script("/no/such/file.txt")
+        self.assertIn("не удалось открыть скрипт", out.getvalue())
+
+    def test_params(self):
+        """Параметры сохраняются и выводятся."""
+        emu = Emulator(vfs_path="my_vfs", script_path="s.txt")
+        out = io.StringIO()
+        with redirect_stdout(out):
+            emu.print_params()
+        self.assertIn("vfs    = my_vfs", out.getvalue())
+        self.assertIn("script = s.txt", out.getvalue())
 
 
 if __name__ == "__main__":

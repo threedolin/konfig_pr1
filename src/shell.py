@@ -1,7 +1,10 @@
 """Эмулятор командной строки UNIX."""
 
 import getpass
+import os
 import socket
+
+from vfs import VFSError, count_items, load_vfs, make_dir
 
 MAX_CD_ARGS = 1
 ERROR_PREFIX = "Ошибка"
@@ -55,6 +58,8 @@ class Emulator:
         """
         self.vfs_path = vfs_path
         self.script_path = script_path
+        self.vfs = make_dir()
+        self.vfs_name = "default"
         self.user = getpass.getuser()
         self.host = socket.gethostname()
         self.cwd = "~"
@@ -105,6 +110,25 @@ class Emulator:
         print("[debug] Параметры запуска:")
         print(f"[debug]   vfs    = {self.vfs_path}")
         print(f"[debug]   script = {self.script_path}")
+
+    def load_vfs(self):
+        """Загружает VFS из директории vfs_path в память.
+
+        Если путь не задан, остается пустая VFS по умолчанию.
+        Возвращает False, если при загрузке произошла ошибка.
+        """
+        if self.vfs_path:
+            try:
+                self.vfs = load_vfs(self.vfs_path)
+            except VFSError as e:
+                print(f"{ERROR_PREFIX}: не удалось загрузить VFS: {e}")
+                return False
+            full_path = os.path.abspath(self.vfs_path)
+            self.vfs_name = os.path.basename(full_path)
+        dirs, files = count_items(self.vfs)
+        print(f"[debug] VFS '{self.vfs_name}' загружена в память: "
+              f"папок - {dirs}, файлов - {files}")
+        return True
 
     def run_script(self, path):
         """Выполняет команды из стартового скрипта.

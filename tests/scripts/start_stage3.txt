@@ -1,0 +1,16 @@
+# стартовый скрипт этапа 3: все команды, которые есть на данный момент
+# ls и cd пока заглушки, их логика будет на этапе 4
+ls
+ls -l /home/user
+ls "file with spaces.txt"
+cd etc
+cd 'home/user/docs'
+cd
+# ошибки: неизвестная команда, неверные аргументы, незакрытая кавычка
+cat etc/passwd
+cd home user
+ls "etc
+exit 0
+# exit завершает работу
+exit
+ls not_executed

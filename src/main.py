@@ -1,6 +1,7 @@
 """Точка входа в эмулятор."""
 
 import argparse
+import sys
 
 from shell import Emulator
 
@@ -14,10 +15,12 @@ def parse_args():
 
 
 def main():
-    """Запускает эмулятор: сначала стартовый скрипт, потом REPL."""
+    """Запускает эмулятор: загрузка VFS, стартовый скрипт, потом REPL."""
     args = parse_args()
     emu = Emulator(vfs_path=args.vfs, script_path=args.script)
     emu.print_params()
+    if not emu.load_vfs():
+        sys.exit(1)
     if args.script:
         emu.run_script(args.script)
     emu.run()

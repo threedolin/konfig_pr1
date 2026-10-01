@@ -5,6 +5,7 @@
 
 import io
 import os
+import platform
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -51,10 +52,10 @@ class TestEmulator(unittest.TestCase):
         self.assertTrue(prompt.startswith(self.emu.user + "@"))
         self.assertTrue(prompt.endswith(":~$ "))
 
-    def test_stubs(self):
-        """Заглушки выводят имя и аргументы."""
-        self.assertIn("ls", self.emu.execute("ls -a"))
-        self.assertIn("'my dir'", self.emu.execute('cd "my dir"'))
+    def test_prompt_after_cd(self):
+        """После cd в приглашении видна текущая папка."""
+        self.emu.cwd = ["home", "user"]
+        self.assertTrue(self.emu.get_prompt().endswith(":~/home/user$ "))
 
     def test_errors(self):
         """Неизвестная команда и неверные аргументы."""
@@ -85,16 +86,16 @@ class TestScript(unittest.TestCase):
 
     def test_input_and_output(self):
         """На экран выводится и команда, и результат."""
-        emu, out = self.run_script("# комментарий\nls a\n")
-        self.assertIn(emu.get_prompt() + "ls a", out)
-        self.assertIn("ls, аргументы: ['a']", out)
+        emu, out = self.run_script("# комментарий\nuname -s\n")
+        self.assertIn(emu.get_prompt() + "uname -s", out)
+        self.assertIn(platform.system(), out)
         self.assertNotIn("комментарий", out)
 
     def test_skip_errors(self):
         """Строка с ошибкой пропускается, дальше выполнение идет."""
-        _, out = self.run_script("abc\nls after\n")
+        _, out = self.run_script("abc\nuname -m\n")
         self.assertIn("строка 1 с ошибкой пропущена", out)
-        self.assertIn("['after']", out)
+        self.assertIn(platform.machine(), out)
 
     def test_exit_in_script(self):
         """exit в скрипте останавливает выполнение."""

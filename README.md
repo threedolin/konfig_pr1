@@ -5,10 +5,10 @@
 ## Общее описание
 
 Консольное приложение на Python, которое имитирует работу командной строки
-UNIX-подобной ОС. Сейчас реализованы этапы 1–3: REPL (программа выводит
+UNIX-подобной ОС. Сейчас реализованы этапы 1–4: REPL (программа выводит
 приглашение, читает команды и выполняет их), настройка через параметры
-командной строки со стартовым скриптом и загрузка виртуальной файловой
-системы (VFS) в память. Команды `ls` и `cd` пока являются заглушками.
+командной строки со стартовым скриптом, загрузка виртуальной файловой
+системы (VFS) в память и основные команды `ls`, `cd`, `uname`, `who`, `wc`.
 
 Приглашение строится из реальных данных ОС (имя пользователя и имя хоста),
 например: `gagik@debian:~$`.
@@ -16,9 +16,10 @@ UNIX-подобной ОС. Сейчас реализованы этапы 1–3
 Структура:
 
 - `src/shell.py` — парсер и класс эмулятора
-- `src/vfs.py` — загрузка VFS из директории в память
+- `src/commands.py` — команды `ls`, `cd`, `uname`, `who`, `wc`
+- `src/vfs.py` — загрузка VFS в память и работа с путями
 - `src/main.py` — точка входа
-- `tests/test_shell.py`, `tests/test_vfs.py` — тесты
+- `tests/test_shell.py`, `tests/test_vfs.py`, `tests/test_commands.py` — тесты
 - `tests/scripts/` — стартовые скрипты и скрипты ОС
 - `tests/vfs/` — тестовые VFS: `minimal`, `several`, `deep`
 - `run.sh` — скрипт запуска
@@ -87,18 +88,30 @@ UNIX-подобной ОС. Сейчас реализованы этапы 1–3
 кавычках (`"..."` или `'...'`) считается одним аргументом, например
 `cd "my folder"`. Если кавычка не закрыта, выводится ошибка.
 
+Корень VFS считается домашней папкой: в приглашении он показывается как
+`~`, вложенные папки — как `~/home/user`. В путях можно использовать
+`/` (корень VFS), `~`, `.` и `..`, абсолютные и относительные пути.
+
 Команды:
 
 | Команда | Что делает |
 |---------|------------|
-| `ls [аргументы]` | заглушка, выводит имя команды и аргументы |
-| `cd [путь]` | заглушка, выводит имя команды и аргумент (больше одного аргумента — ошибка) |
+| `ls [-l] [путь ...]` | содержимое папки (без пути — текущей). `-l` — подробно: тип (`d` — папка, `-` — файл), размер, имя. Для файла выводится его имя, для нескольких папок — заголовки `путь:` |
+| `cd [путь]` | переход в папку. Без аргументов или `~` — в корень VFS |
+| `uname [-a] [-s] [-n] [-r] [-m]` | данные реальной ОС: `-s` имя ядра (по умолчанию), `-n` имя компьютера, `-r` версия ядра, `-m` архитектура, `-a` всё сразу |
+| `who [-H]` | пользователь, терминал и время входа (время запуска эмулятора). `-H` — заголовок |
+| `wc [-l] [-w] [-c] файл ...` | число строк, слов и байтов (без флагов — всё). Для нескольких файлов — строка `total` |
 | `exit` | выход из эмулятора |
+
+Флаги можно писать вместе: `ls -l`, `uname -nm`.
 
 Ошибки, которые обрабатываются:
 
 - неизвестная команда;
-- неверные аргументы (`cd a b`, `exit 1`);
+- неверные аргументы (`cd a b`, `exit 1`, `uname x`, `who x`);
+- неверный флаг (`ls -z`, `wc -x`);
+- путь не найден (`ls nope`, `cd nope`, `wc nope`);
+- папка вместо файла и наоборот (`cd etc/passwd`, `wc etc`);
 - незакрытая кавычка.
 
 Выйти также можно через `Ctrl+D` или `Ctrl+C`.
@@ -138,26 +151,45 @@ PYTHONPATH=src python3 -m unittest discover tests
 - `test_vfs_errors.sh` — несуществующий путь, файл вместо папки, VFS по
   умолчанию.
 
-Запуск, например: `sh tests/scripts/test_vfs_deep.sh`.
+Этап 4: `test_stage4.sh` запускает стартовый скрипт
+`tests/scripts/start_stage4.txt` со всеми режимами `ls`, `cd`, `uname`,
+`who`, `wc` и их ошибками на VFS `deep`.
+
+Запуск, например: `sh tests/scripts/test_stage4.sh`.
 
 ## Примеры использования
 
 ```
-$ ./run.sh
+$ ./run.sh --vfs tests/vfs/deep
+[debug] Параметры запуска:
+[debug]   vfs    = tests/vfs/deep
+[debug]   script = None
+[debug] VFS 'deep' загружена в память: папок - 9, файлов - 7
 gagik@debian:~$ ls
-ls, аргументы: []
-gagik@debian:~$ ls -l "my documents"
-ls, аргументы: ['-l', 'my documents']
-gagik@debian:~$ cd 'new folder'
-cd, аргументы: ['new folder']
-gagik@debian:~$ cd a b
-Ошибка: cd: слишком много аргументов
+etc  home  var
+gagik@debian:~$ cd home/user
+gagik@debian:~/home/user$ ls -l docs
+d   4096 drafts
+-     70 report.txt
+gagik@debian:~/home/user$ cd /etc
+gagik@debian:~/etc$ wc passwd hostname
+2 2 67 passwd
+1 1 9 hostname
+3 3 76 total
+gagik@debian:~/etc$ cd passwd
+Ошибка: cd: это не папка: passwd
+gagik@debian:~/etc$ cd
+gagik@debian:~$ uname -a
+Linux debian 6.12.85+deb13-amd64 x86_64
+gagik@debian:~$ who -H
+NAME      LINE        TIME
+gagik     pts/0       2026-10-02 11:51
+gagik@debian:~$ ls nope
+Ошибка: ls: нет такого файла или папки: nope
 gagik@debian:~$ hello
 Ошибка: неизвестная команда 'hello'
 gagik@debian:~$ ls "abc
 Ошибка: не закрыта кавычка "
-gagik@debian:~$ exit 1
-Ошибка: exit: команда не принимает аргументы
 gagik@debian:~$ exit
 ```
 
@@ -169,8 +201,8 @@ $ ./run.sh --script tests/scripts/start_errors.txt
 [debug]   vfs    = None
 [debug]   script = tests/scripts/start_errors.txt
 [debug] VFS 'default' загружена в память: папок - 0, файлов - 0
-gagik@debian:~$ ls first
-ls, аргументы: ['first']
+gagik@debian:~$ uname -s
+Linux
 gagik@debian:~$ hello world
 Ошибка: неизвестная команда 'hello'
 [script] строка 3 с ошибкой пропущена
@@ -180,8 +212,8 @@ gagik@debian:~$ cd a b
 gagik@debian:~$ ls "abc
 Ошибка: не закрыта кавычка "
 [script] строка 5 с ошибкой пропущена
-gagik@debian:~$ ls after_errors
-ls, аргументы: ['after_errors']
+gagik@debian:~$ uname -m
+x86_64
 gagik@debian:~$ exit
 ```
 

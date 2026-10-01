@@ -1,0 +1,49 @@
+# стартовый скрипт этапа 4: ls, cd, uname, who, wc
+# запускать с VFS tests/vfs/deep
+# --- ls ---
+ls
+ls -l
+ls home/user/docs
+ls -l home/user/docs
+ls etc var/log
+ls etc/hostname
+ls nope
+ls -z
+# --- cd ---
+cd home/user
+ls
+cd docs/drafts
+cd ..
+cd ../music
+cd /var/log
+cd ~/etc
+cd
+cd nope
+cd etc/passwd
+cd home user
+# --- uname ---
+uname
+uname -s
+uname -n
+uname -r
+uname -m
+uname -a
+uname -x
+uname extra
+# --- who ---
+who
+who -H
+who -q
+who extra
+# --- wc ---
+wc etc/passwd
+wc -l var/log/app/app.log
+wc -w home/user/docs/report.txt
+wc -c etc/hostname
+cd home/user/docs
+wc report.txt drafts/draft1.txt drafts/draft2.txt
+wc
+wc nope
+wc drafts
+wc -x report.txt
+exit

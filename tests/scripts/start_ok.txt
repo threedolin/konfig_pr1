@@ -1,5 +1,6 @@
 # стартовый скрипт без ошибок
 ls
-ls -l "my documents"
-cd 'new folder'
+cd ~
+uname
+who
 cd

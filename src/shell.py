@@ -3,11 +3,12 @@
 import getpass
 import os
 import socket
+import time
 
-from vfs import VFSError, count_items, load_vfs, make_dir
-
-MAX_CD_ARGS = 1
-ERROR_PREFIX = "Ошибка"
+from commands import (
+    ERROR_PREFIX, cmd_cd, cmd_ls, cmd_uname, cmd_wc, cmd_who,
+)
+from vfs import VFSError, count_items, load_vfs, make_dir, path_to_str
 
 
 class ParseError(Exception):
@@ -48,6 +49,14 @@ def parse_line(line):
     return words
 
 
+def cmd_exit(emu, args):
+    """exit - завершает работу эмулятора."""
+    if args:
+        return f"{ERROR_PREFIX}: exit: команда не принимает аргументы"
+    emu.running = False
+    return ""
+
+
 class Emulator:
     """Эмулятор оболочки с приглашением user@host:~$."""
 
@@ -62,17 +71,25 @@ class Emulator:
         self.vfs_name = "default"
         self.user = getpass.getuser()
         self.host = socket.gethostname()
-        self.cwd = "~"
+        self.cwd = []
+        self.start_time = time.time()
         self.running = True
         self.commands = {
-            "ls": self.cmd_ls,
-            "cd": self.cmd_cd,
-            "exit": self.cmd_exit,
+            "ls": cmd_ls,
+            "cd": cmd_cd,
+            "uname": cmd_uname,
+            "who": cmd_who,
+            "wc": cmd_wc,
+            "exit": cmd_exit,
         }
 
     def get_prompt(self):
-        """Возвращает строку приглашения к вводу."""
-        return f"{self.user}@{self.host}:{self.cwd}$ "
+        """Возвращает строку приглашения к вводу.
+
+        Текущая папка self.cwd хранится как список имен от корня VFS,
+        корень показывается как ~.
+        """
+        return f"{self.user}@{self.host}:{path_to_str(self.cwd)}$ "
 
     def execute(self, line):
         """Выполняет одну строку и возвращает текст, который нужно вывести."""
@@ -86,24 +103,7 @@ class Emulator:
         args = words[1:]
         if name not in self.commands:
             return f"{ERROR_PREFIX}: неизвестная команда '{name}'"
-        return self.commands[name](args)
-
-    def cmd_ls(self, args):
-        """Заглушка ls: печатает имя команды и аргументы."""
-        return f"ls, аргументы: {args}"
-
-    def cmd_cd(self, args):
-        """Заглушка cd: печатает имя команды и аргументы."""
-        if len(args) > MAX_CD_ARGS:
-            return f"{ERROR_PREFIX}: cd: слишком много аргументов"
-        return f"cd, аргументы: {args}"
-
-    def cmd_exit(self, args):
-        """Завершает работу эмулятора."""
-        if args:
-            return f"{ERROR_PREFIX}: exit: команда не принимает аргументы"
-        self.running = False
-        return ""
+        return self.commands[name](self, args)
 
     def print_params(self):
         """Отладочный вывод параметров, с которыми запущен эмулятор."""

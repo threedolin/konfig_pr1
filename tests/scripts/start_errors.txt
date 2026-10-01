@@ -1,8 +1,8 @@
 # стартовый скрипт с ошибками, ошибочные строки пропускаются
-ls first
+uname -s
 hello world
 cd a b
 ls "abc
-ls after_errors
+uname -m
 exit
 ls not_executed

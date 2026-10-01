@@ -77,3 +77,45 @@ def count_items(node):
         else:
             files += 1
     return dirs, files
+
+
+def resolve_path(cwd, path):
+    """Переводит путь в список имен от корня VFS.
+
+    cwd - текущая папка (список имен), path - путь, который ввел
+    пользователь. Корень VFS - это домашняя папка "~". Поддерживаются
+    абсолютные пути (/a/b), пути от ~ (~/a), относительные пути, "." и "..".
+    """
+    if path == "~" or path.startswith("~/"):
+        parts = []
+        path = path[1:]
+    elif path.startswith("/"):
+        parts = []
+    else:
+        parts = list(cwd)
+    for name in path.split("/"):
+        if name in ("", "."):
+            continue
+        if name == "..":
+            if parts:
+                parts.pop()
+        else:
+            parts.append(name)
+    return parts
+
+
+def find_node(root, parts):
+    """Ищет элемент VFS по списку имен. Если не найден, возвращает None."""
+    node = root
+    for name in parts:
+        if node["type"] != "dir" or name not in node["children"]:
+            return None
+        node = node["children"][name]
+    return node
+
+
+def path_to_str(parts):
+    """Превращает список имен в строку для приглашения: ~, ~/home/user."""
+    if not parts:
+        return "~"
+    return "~/" + "/".join(parts)

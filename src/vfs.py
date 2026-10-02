@@ -5,25 +5,65 @@
 работает только с этими словарями, файлы на диске не изменяются.
 
 Как устроены элементы VFS:
-    папка - {"type": "dir", "children": {имя: элемент, ...}}
-    файл  - {"type": "file", "content": b"содержимое файла"}
+    папка - {"type": "dir", "children": {имя: элемент, ...},
+             "owner": владелец, "group": группа}
+    файл  - {"type": "file", "content": b"содержимое файла",
+             "owner": владелец, "group": группа}
 """
 
+import getpass
+import grp
 import os
+import pwd
 
 
 class VFSError(Exception):
     """Ошибка загрузки VFS."""
 
 
-def make_dir():
-    """Создает пустую папку VFS."""
-    return {"type": "dir", "children": {}}
+def user_name(uid):
+    """Имя пользователя по его номеру (uid)."""
+    try:
+        return pwd.getpwuid(uid).pw_name
+    except KeyError:
+        return str(uid)
 
 
-def make_file(content):
+def group_name(gid):
+    """Имя группы по ее номеру (gid)."""
+    try:
+        return grp.getgrgid(gid).gr_name
+    except KeyError:
+        return str(gid)
+
+
+def make_dir(owner=None, group=None):
+    """Создает пустую папку VFS.
+
+    Если владелец и группа не указаны, берется текущий пользователь.
+    """
+    return {
+        "type": "dir",
+        "children": {},
+        "owner": owner or getpass.getuser(),
+        "group": group or group_name(os.getgid()),
+    }
+
+
+def make_file(content, owner=None, group=None):
     """Создает файл VFS с указанным содержимым (bytes)."""
-    return {"type": "file", "content": content}
+    return {
+        "type": "file",
+        "content": content,
+        "owner": owner or getpass.getuser(),
+        "group": group or group_name(os.getgid()),
+    }
+
+
+def get_owner(path):
+    """Владелец и группа файла на диске."""
+    info = os.stat(path)
+    return user_name(info.st_uid), group_name(info.st_gid)
 
 
 def read_file(path):
@@ -37,7 +77,7 @@ def read_file(path):
 
 def load_dir(path):
     """Рекурсивно читает папку с диска и возвращает папку VFS."""
-    node = make_dir()
+    node = make_dir(*get_owner(path))
     try:
         names = sorted(os.listdir(path))
     except OSError as e:
@@ -49,7 +89,9 @@ def load_dir(path):
         if os.path.isdir(full_path):
             node["children"][name] = load_dir(full_path)
         elif os.path.isfile(full_path):
-            node["children"][name] = make_file(read_file(full_path))
+            content = read_file(full_path)
+            owner, group = get_owner(full_path)
+            node["children"][name] = make_file(content, owner, group)
     return node
 
 

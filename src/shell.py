@@ -6,7 +6,8 @@ import socket
 import time
 
 from commands import (
-    ERROR_PREFIX, cmd_cd, cmd_ls, cmd_uname, cmd_wc, cmd_who,
+    ERROR_PREFIX, cmd_cd, cmd_chown, cmd_ls, cmd_rm, cmd_uname, cmd_wc,
+    cmd_who,
 )
 from vfs import VFSError, count_items, load_vfs, make_dir, path_to_str
 
@@ -80,6 +81,8 @@ class Emulator:
             "uname": cmd_uname,
             "who": cmd_who,
             "wc": cmd_wc,
+            "rm": cmd_rm,
+            "chown": cmd_chown,
             "exit": cmd_exit,
         }
 

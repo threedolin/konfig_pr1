@@ -57,9 +57,11 @@ class TestLs(unittest.TestCase):
                          "drafts  report.txt")
 
     def test_long(self):
-        """ls -l показывает тип и размер."""
+        """ls -l показывает тип, владельца, группу и размер."""
         out = self.emu.execute("ls -l etc")
-        self.assertIn("-      9 hostname", out)
+        node = self.emu.vfs["children"]["etc"]["children"]["hostname"]
+        self.assertTrue(out.startswith("- " + node["owner"]))
+        self.assertIn("     9 hostname", out)
 
     def test_several(self):
         """Несколько папок - с заголовками."""

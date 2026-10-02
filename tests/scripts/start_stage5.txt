@@ -1,0 +1,40 @@
+# стартовый скрипт этапа 5: rm и chown
+# запускать с VFS tests/vfs/deep, все изменения только в памяти
+ls -l etc
+# --- chown ---
+chown root etc/passwd
+chown root:daemon etc/hostname
+chown :root var
+ls -l etc
+ls -l
+chown -R daemon:daemon home/user
+ls -l home/user home/user/docs
+# --- chown: ошибки ---
+chown
+chown root
+chown no_such_user etc/passwd
+chown :no_such_group etc/passwd
+chown root no_such_file
+chown -x root etc
+# --- rm ---
+rm etc/passwd
+ls etc
+rm home/user/docs/drafts/draft1.txt home/user/docs/drafts/draft2.txt
+ls home/user/docs/drafts
+rm -r home/user/music
+ls home/user
+rm -f no_such_file
+cd home/user/docs
+rm -r /home/user/docs
+ls
+cd
+# --- rm: ошибки ---
+rm
+rm no_such_file
+rm var
+rm -r .
+rm -r ..
+rm -r ~
+rm -z etc
+ls
+exit
